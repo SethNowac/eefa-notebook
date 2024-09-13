@@ -14,11 +14,11 @@ def indexJoin(collectionA, collectionB, propertyName):
     secondary = collectionB,
     condition = ee.Filter.equals(
     leftField = 'system =index',
-    rightField = 'system =index'})
+    rightField = 'system =index')
     ))
     # Merge the bands of the joined image.
 
-    def func_bys(image) =
+    def func_bys(image):
         return image.addBands(ee.Image(image.get(propertyName)))
 
     return joined.map(func_bys)
@@ -27,7 +27,7 @@ def indexJoin(collectionA, collectionB, propertyName):
 
 
 # Aggressively mask clouds and shadows.
-def maskImage(image) =
+def maskImage(image):
     # Compute the cloud displacement index from the L1C bands.
     cdi = ee.Algorithms.Sentinel2.CDI(image)
     s2c = image.select('probability')
@@ -42,7 +42,7 @@ def maskImage(image) =
     # Reproject is required to perform spatial operations at 20m scale.
     # 20m scale is for speed, and assumes clouds don't require 10m precision.
     isCloud = isCloud.focal_min(3).focal_max(16)
-    isCloud = isCloud.reproject({crs = cdi.projection(), scale = 20})
+    isCloud = isCloud.reproject(crs = cdi.projection(), scale = 20)
 
     # Project shadows from clouds we found in the last step. This assumes we're working in
     # a UTM projection.
@@ -51,14 +51,7 @@ def maskImage(image) =
 
     # With the following reproject, the shadows are projected 5km.
     isCloud = isCloud.directionalDistanceTransform(shadowAzimuth, 50)
-    isCloud = isCloud.reproject({crs = cdi.projection(), scale = 100})
+    isCloud = isCloud.reproject(crs = cdi.projection(), scale = 100)
 
     isCloud = isCloud.select('distance').mask()
     return image.select('B2', 'B3', 'B4').updateMask(isCloud.Not())
-
-
-maskImage = maskImage
-indexJoin = indexJoin
-
-# LGTM (nclinton)
-Map
