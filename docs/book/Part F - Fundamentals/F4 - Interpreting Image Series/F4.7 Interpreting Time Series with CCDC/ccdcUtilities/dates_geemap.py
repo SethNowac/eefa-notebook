@@ -14,82 +14,44 @@ EPOCH_DAYS = ee.Number(719163)
 
 
 
-
-def func_dcy(ms):
+def msToDays(ms):
     return ee.Number(ms).divide(MS_TO_DAYS)
 
-msToDays = func_dcy
 
 
-
-
-
-
-def func_xtx(str_date):
-if (not str_date):
-            return('Required parameter [str_date] missing')
+def dateToJdays(str_date):
+    if (not str_date):
+        return('Required parameter [str_date] missing')
 
     date = ee.Date(str_date)
 
     # Convert unix time to days
     return msToDays(date.millis()).add(EPOCH_DAYS)
 
-dateToJdays = func_xtx
 
 
 
-
-
-
-
-
-
-
-
-
-def func_oac(jdays):
+def jdaysToms(jdays):
     daysSinceEpoch = ee.Number(jdays).subtract(EPOCH_DAYS)
     return daysSinceEpoch.multiply(MS_TO_DAYS)
 
-jdaysToms = func_oac
 
 
-
-
-
-
-def func_cky(jdays):
+def jdaysToDate(jdays):
     return ee.Date(jdaysToms(jdays))
 
-jdaysToDate = func_cky
 
-
-
-
-
-def func_ted(ms):
+def msToJdays(ms):
     return ee.Number(msToDays(ms)).add(EPOCH_DAYS)
 
-msToJdays = func_ted
 
-
-
-
-
-def func_ram(ms):
-    year = (ee.Date(ms).get('year'))
-    frac = (ee.Date(ms).getFraction('year'))
+def msToFrac(ms):
+    year = (ee.Date(ms).get('year')) 
+    frac = (ee.Date(ms).getFraction('year'))  
     return year.add(frac)
 
-msToFrac = func_ram
 
-
-
-
-
-
-
-def func_cwb(frac):
+def fracToms(frac):
     fyear = ee.Number(frac)
     year = fyear.floor()
     d = fyear.subtract(year).multiply(365)
@@ -97,114 +59,42 @@ def func_cwb(frac):
     return day_one.advance(d, 'day').millis()
 
 
-fracToms = func_cwb
 
-
-
-
-
-
-
-
-
-
-
-def func_kyt(frac):
+def fracToDate(frac):
     ms = fracToms(frac)
     return msToDate(ms)
 
-fracToDate = func_kyt
+
+def msToDate(ms): return jdaysToDate(msToJdays(ms))
 
 
 
+def convertDate(options):
+    inputFormat = (options is not None and options["inputFormat"]) or 0
+    inputDate = (options is not None and options["inputDate"]) or None
+    outputFormat = (options is not None and options["outputFormat"]) or 0
 
-
-
-def func_ris(ms)return jdaysToDate(msToJdays(ms))}:
-def msToDate(ms)return jdaysToDate(msToJdays(ms))}:
-msToDate = func_ris
-
-
-
-
-def func_bmo(options):
-    inputFormat = (options && options.inputFormat) or 0
-    inputDate = (options && options.inputDate) or None
-    outputFormat = (options && options.outputFormat) or 0
-
-if (not inputDate):
-            return('Required parameter [inputDate] missing')
-
-
+    if (not inputDate):
+        return('Required parameter [inputDate] missing')
+    
     # First convert to millis
-if (inputFormat == 0):
-            milli = jdaysToms(inputDate)
-if (inputFormat == 1):
-            milli = fracToms(inputDate)
-if (inputFormat == 2):
-            milli = inputDate
-if (inputFormat == 3):
-            milli = jdaysToms(dateToJdays(inputDate))
-
+    if (inputFormat == 0):
+        milli = jdaysToms(inputDate)
+    elif (inputFormat == 1):
+        milli = fracToms(inputDate)
+    elif (inputFormat == 2):
+        milli = inputDate
+    elif (inputFormat == 3):
+        milli = jdaysToms(dateToJdays(inputDate))
 
     # Now convert to output format
-if (outputFormat == 0):
-            output = msToJdays(milli)
-if (outputFormat == 1):
-            output = msToFrac(milli)
-if (outputFormat == 2):
-            output = milli
-if (outputFormat == 4):
-            output = jdaysToDate(msToJdays(milli))
-
-
+    if (outputFormat == 0):
+        output = msToJdays(milli)
+    elif (outputFormat == 1):
+        output = msToFrac(milli)
+    elif (outputFormat == 2):
+        output = milli
+    elif (outputFormat == 4):
+        output = jdaysToDate(msToJdays(milli))
+    
     return output
-
-convertDate = func_bmo
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-exports = {
-    'msToDays': msToDays,
-    'dateToJdays': dateToJdays,
-    'jdaysToms': jdaysToms,
-    'jdaysToDate': jdaysToDate,
-    'msToJdays': msToJdays,
-    'msToFrac': msToFrac,
-    'msToDate': msToDate,
-    'fracToms': fracToms,
-    'convertDate': convertDate
-}
-m

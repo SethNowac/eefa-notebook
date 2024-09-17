@@ -110,7 +110,7 @@ def func_czy(greenColl, precipColl, aoi):
 
     # Calculate predicted ndvi and residuals.
     greenestWprecipColl = greenestWprecipColl.map(calcPredNdviAndResiduals)
-    print(greenestWprecipColl, 'see all bands in here now'.getInfo())
+    print(greenestWprecipColl.getInfo(), 'see all bands in here now')
     # FYI, this Image Collection now contains the following bands for each year:
     # greeness
     # precipitation
@@ -119,6 +119,14 @@ def func_czy(greenColl, precipColl, aoi):
     # predicted NDVI
     # residual
 
+    # Maps compileresidualColl.
+    residualColl = greenestWprecipColl.map(compileresidualColl)
+
+    return residualColl
+
+createResidColl = func_czy
+
+# LGTM (nclinton)
 
 
 

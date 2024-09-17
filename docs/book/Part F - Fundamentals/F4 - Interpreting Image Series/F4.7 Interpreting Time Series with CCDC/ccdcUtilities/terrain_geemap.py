@@ -7,12 +7,12 @@ m = geemap.Map()
 #*** Start of imports. If edited, may not auto-convert in the playground. ***#
 geometry = ee.Geometry.Point([84.07618795831739, 29.54037010686166])
 
-utils = require('projects/GLANCE:ccdcUtilities/inputs')
+from . import inputs_geemap as utils
 
-PARAMS,
-TERRAIN,
-FUNCS,
-HELPER
+PARAMS: any
+TERRAIN: any
+FUNCS: any
+HELPER: any
 RESULTS = {}
 
 PARAMS = {
@@ -27,22 +27,15 @@ PARAMS = {
 
 def func_csf():
 
-
     def func_kbm(num):
             return num.multiply(180).divide(PARAMS.pi)
 
-    this.degrees = func_kbm
-
-
-
+    degrees = func_kbm
 
     def func_xqj(num):
             return num.multiply(pi).divide(180)
 
-    this.radians = func_xqj
-
-
-
+    radians = func_xqj
 
     def func_bki():
             PARAMS.landsatImage = ee.Image(
@@ -65,27 +58,7 @@ def func_csf():
 
             PARAMS.sensingTime = sensingTime
 
-    this.filterLandsat = func_bki
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    filterLandsat = func_bki
 
 
     def func_ivp(img):
@@ -110,31 +83,7 @@ def func_csf():
             ).first()
             return img.set('SZE',sze.get('sunZen'),'SAZ',saz.get('sunAz'))
 
-    this.getSZE = func_ivp
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    getSZE = func_ivp
 
 FUNCS = func_csf
 
@@ -395,7 +344,7 @@ if (result.indexOf(''):
         .addBands(slp.rename('slope')))
         return img_plus_ic
 
-    this.illuminationCondition = func_xde
+    illuminationCondition = func_xde
 
 
 
@@ -503,7 +452,7 @@ if (out == None or out == undefined ):
         .setMulti(props) \
         .set('system:time_start',st)
 
-    this.illuminationCorrection = func_ctw
+    illuminationCorrection = func_ctw
 
 
 
