@@ -4,7 +4,18 @@ from datetime import date
 
 m = geemap.Map()
 
-from . import ccdc_api_geemap as utils
+geometry = ee.Geometry.Point([-48.735319871564464, -3.9349915957792634])
+lc8 = ee.ImageCollection("LANDSAT/LC08/C01/T1_SR")
+geometry2 = ee.Geometry.Point([178.06640625805346, -17.970112199227554])
+geometry3 = \
+    ee.Geometry.Polygon(
+        [[[-48.02972284125171, -2.2204248963007274],
+          [-48.02972284125171, -2.5991173403443737],
+          [-47.54083123968921, -2.5991173403443737],
+          [-47.54083123968921, -2.2204248963007274]]], None, False)
+geometry4 = ee.Geometry.MultiPoint()
+
+from ccdcUtilities import api_geemap as utils
 
 def parameters():
     endmembers = {
@@ -200,17 +211,17 @@ def func_hnn(params):
 
     # Random Parameters
     generalParams = {}
-    generalParams['segs'] = params.segs or ['S1','S2','S3','S4','S5']
-    generalParams['classBands'] = params.classBands or utils.Inputs.getLandsat().filterBounds(generalParams.studyArea).first().bandNames().getInfo()
-    generalParams['coefs'] = params.coefs or ['INTP','SIN','COS','RMSE','SLP']
-    generalParams['forestValue'] = params.forestValue or 1
-    generalParams['studyArea'] = params.studyArea or ee.Geometry(m.getBounds(True))
-    generalParams['mask'] = params.forestMask 
-    generalParams['landsatCollection'] = params.landsatCollection or 1
+    generalParams['segs'] = params['segs'] or ['S1','S2','S3','S4','S5']
+    generalParams['classBands'] = params['classBands'] or utils.Inputs.getLandsat().filterBounds(generalParams.studyArea).first().bandNames().getInfo()
+    generalParams['coefs'] = params['coefs'] or ['INTP','SIN','COS','RMSE','SLP']
+    generalParams['forestValue'] = params['forestValue'] or 1
+    generalParams['studyArea'] = params['studyArea'] or ee.Geometry(m.getBounds(True))
+    generalParams['mask'] = params['forestMask'] 
+    generalParams['landsatCollection'] = params['landsatCollection'] or 1
 
     # CODED Change Detection Parameters
     changeDetectionParams = {}
-    changeDetectionParams['collection'] = params.collection or utils.Inputs.getLandsat({'collection': generalParams['landsatCollection']})
+    changeDetectionParams['collection'] = params['collection'] or utils.Inputs.getLandsat({'collection': generalParams['landsatCollection']})
 
 
     changeDetectionParams['breakpointBands'] = params['breakpointBands'] or ['NDFI']
@@ -248,8 +259,8 @@ def func_hnn(params):
     output['General_Parameters'] = generalParams
     output['Layers'] = {}
 
-    if (params.forestMask):
-            output.Layers['mask'] = params.forestMask.eq(params.forestValue)
+    if (params['forestMask']):
+            output.Layers['mask'] = params['forestMask'].eq(params['forestValue'])
 
 
     # Some random editing of parameters
@@ -260,8 +271,8 @@ def func_hnn(params):
     dates = changeDetectionParams['collection'].filterBounds(generalParams['studyArea']).map(func_dja)
 
 
-    generalParams['startYear'] = params.startYear or dates.aggregate_min('year')
-    generalParams['endYear'] = params.endYear or  dates.aggregate_max('year')
+    generalParams['startYear'] = params['startYear'] or dates.aggregate_min('year')
+    generalParams['endYear'] = params['endYear'] or  dates.aggregate_max('year')
 
 
     # ----------------- Run Analysis
@@ -270,7 +281,7 @@ def func_hnn(params):
     output.Layers['rawChangeOutput'] = ee.Algorithms.TemporalSegmentation.Ccdc(changeDetectionParams)
     output.Layers['formattedChangeOutput'] = utils.CCDC.buildCcdImage(output.Layers.rawChangeOutput, generalParams.segs.__len__(), generalParams.classBands)
     # prepTraining = True
-    if (params.prepTraining):
+    if (params['prepTraining']):
 
             # Get training data coefficients
 
@@ -286,7 +297,7 @@ def func_hnn(params):
                             ))
                     return sampleForTraining
 
-            sampleForTraining = ee.FeatureCollection(params.training.map(func_wqm
+            sampleForTraining = ee.FeatureCollection(params['training'].map(func_wqm
 
 
 
@@ -300,8 +311,8 @@ def func_hnn(params):
             )).filter(ee.Filter.notNull(['NDFI_INTP']))
 
             # print('Sample for training: ', sampleForTraining.first().getInfo())
-            if (params.outId):
-                outId = params.outId
+            if (params['outId']):
+                outId = params['outId']
             else:
                 outId = 'sample_with_pred'
                         
@@ -312,7 +323,7 @@ def func_hnn(params):
                 )
 
     else:
-            sampleForTraining = params.training
+            sampleForTraining = params['training']
     # print(sampleForTraining.getInfo())
 
     # Format classification parameters and extract values  
@@ -798,19 +809,19 @@ sarLib = require('users/andreasvollrath/radar:sarLib.js')
 def func_wek(geo, params):
 
     #------------------- Parse parameters
-    interval = params and params.interval or None 
-    intervalSize = params and params.intervalSize or 2
-    intervalCount = params and params.intervalCount or 1000
-    kernelSize = params and params.kernelSize or 3
-    reducer = params and params.reducer or ee.Reducer.mean()
-    kernel = params and params.kernel or 'circle'
-    start = params and params.start or '2014-01-01'
-    end = params and params.end or '2021-01-01'
-    correctionMethod = params and params.correctionMethod or 'None'
-    rawPower = params and params.rawPower or None
-    boxcar = params and params.boxcar or None
-    lee = params and params.lee or None
-    scaleFactor = params and params.scaleFactor or 30
+    interval = params and params['interval'] or None 
+    intervalSize = params and params['intervalSize'] or 2
+    intervalCount = params and params['intervalCount'] or 1000
+    kernelSize = params and params['kernelSize'] or 3
+    reducer = params and params['reducer'] or ee.Reducer.mean()
+    kernel = params and params['kernel'] or 'circle'
+    start = params and params['start'] or '2014-01-01'
+    end = params and params['end'] or '2021-01-01'
+    correctionMethod = params and params['correctionMethod'] or 'None'
+    rawPower = params and params['rawPower'] or None
+    boxcar = params and params['boxcar'] or None
+    lee = params and params['lee'] or None
+    scaleFactor = params and params['scaleFactor'] or 30
     correctionMethod = ee.String(correctionMethod)
     bands = ['VH', 'VV', 'ratio']
 
@@ -959,7 +970,7 @@ def func_ixl(aoi, startDate, endDate, startDOY, endDOY, cloudFilter, cloudProbTh
             # Remove small cloud-shadow patches and dilate remaining pixels by BUFFER input.
             # 20 m scale is for speed, and assumes clouds don't require 10 m precision.
             is_cld_shdw2 = (is_cld_shdw.focal_min(2).focal_max(buffer*2/20) \
-            .reproject({'crs': img.select([0]).projection(), 'scale': 20}) \
+            .reproject(**{'crs': img.select([0]).projection(), 'scale': 20}) \
             .rename('cloudmask'))
 
             # Add the final cloud-shadow mask to the image.
@@ -994,7 +1005,7 @@ getS2Cloudless = func_ixl
 
 # Default S2 collection. 
 def defaultS2(params):
-  return getS2Cloudless(params.studyArea, params.start, params.end, params.startDOY, params.endDOY)
+  return getS2Cloudless(params['studyArea'], params['start'], params['end'], params['startDOY'], params['endDOY'])
 
 
 
