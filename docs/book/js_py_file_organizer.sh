@@ -24,7 +24,7 @@ read -r -p "Proceed with directory $(basename "$refined_directory")? [y/N]: " re
 if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
 then
     # Sort the files in each folder into their own directories
-    #find . -type f -name "*sort_checkpoint_files.sh" -execdir sh {} \;
+    find . -type f -name "*sort_checkpoint_files.sh" -execdir sh {} \;
 
     ./refined_script_sorter.sh "$refined_directory"
 else

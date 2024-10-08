@@ -23,11 +23,11 @@ cp "$refined_directory/A1.3/A13c Checkpoint_geemap.py" "./Part A - Applications\
 cp "$refined_directory/A1.3/A13e Checkpoint_geemap.ipynb" "./Part A - Applications\A1 - Human Applications\A1.3 Built Environments\3.refined-working"
 cp "$refined_directory/A1.3/A13e Checkpoint_geemap.py" "./Part A - Applications\A1 - Human Applications\A1.3 Built Environments\3.refined-working"
 
-cp "$refined_directory/A1.3/A31s1 Checkpoint_geemap.ipynb" "./Part A - Applications\A1 - Human Applications\A1.3 Built Environments\3.refined-working"
-cp "$refined_directory/A1.3/A31s1 Checkpoint_geemap.py" "./Part A - Applications\A1 - Human Applications\A1.3 Built Environments\3.refined-working"
+cp "$refined_directory/A1.3/A31s1 Exercise 1_geemap.ipynb" "./Part A - Applications\A1 - Human Applications\A1.3 Built Environments\3.refined-working"
+cp "$refined_directory/A1.3/A31s1 Exercise 1_geemap.py" "./Part A - Applications\A1 - Human Applications\A1.3 Built Environments\3.refined-working"
 
-cp "$refined_directory/A1.3/A31s2 Checkpoint_geemap.ipynb" "./Part A - Applications\A1 - Human Applications\A1.3 Built Environments\3.refined-working"
-cp "$refined_directory/A1.3/A31s2 Checkpoint_geemap.py" "./Part A - Applications\A1 - Human Applications\A1.3 Built Environments\3.refined-working"
+cp "$refined_directory/A1.3/A31s2 Exercise 2_geemap.ipynb" "./Part A - Applications\A1 - Human Applications\A1.3 Built Environments\3.refined-working"
+cp "$refined_directory/A1.3/A31s2 Exercise 2_geemap.py" "./Part A - Applications\A1 - Human Applications\A1.3 Built Environments\3.refined-working"
 
 ##------------------------------------------------------------------------------------------------------------------------------------------------------------
 
