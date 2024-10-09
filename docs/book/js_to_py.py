@@ -10,7 +10,7 @@ from geemap.conversion import *
 
 out_dir = os.getcwd()
 js_dir = out_dir
-js_to_python_dir(in_dir=js_dir, out_dir=out_dir, use_qgis=False, import_geemap=True)
+js_to_python_dir(in_dir=js_dir, out_dir=out_dir, use_qgis=False, show_authenticate_and_initialize=True, import_geemap=True)
 py_to_ipynb_dir(js_dir)
 
 # Remove _geemap suffix from all files in a directory

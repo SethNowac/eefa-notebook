@@ -64,7 +64,7 @@ var statsloss = lossArea.reduceRegion({
 print(statsgain.get('classification'),
     'km² of new mangroves in 2020 in Guinea');
 print(statsloss.get('classification'),
-    'of mangrove was lost in 2020 in Guinea');
+    'km² of mangrove was lost in 2020 in Guinea');
 
 Map.addLayer(gain.selfMask(), {
     palette: 'green'
@@ -108,8 +108,8 @@ var harmonizationRoy = function(oli) {
     var itcp = ee.Image.constant([-0.0095, -0.0016, -0.0022, -
         0.0021, -0.0030, 0.0029
     ]);
-    var y = oli.select(['B2', 'B3', 'B4', 'B5', 'B6', 'B7'], [
-            'B1', 'B2', 'B3', 'B4', 'B5', 'B7'
+    var y = oli.select(['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'], [
+            'SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'
         ])
         .resample('bicubic')
         .subtract(itcp.multiply(10000)).divide(slopes)
@@ -121,15 +121,15 @@ var harmonizationRoy = function(oli) {
 var getSRcollection = function(year, startDay, endYear, endDay,
     sensor) {
     var srCollection = ee.ImageCollection('LANDSAT/' + sensor +
-            '/C01/T1_SR')
+            '/C02/T1_L2')
         .filterDate(year + '-' + startDay, endYear + '-' + endDay)
         .map(function(img) {
             var dat;
             if (sensor == 'LC08') {
                 dat = harmonizationRoy(img.unmask());
             } else {
-                dat = img.select(['B1', 'B2', 'B3', 'B4',
-                        'B5', 'B7'
+                dat = img.select(['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4',
+                        'SR_B5', 'SR_B7'
                     ])
                     .unmask()
                     .resample('bicubic')
@@ -137,16 +137,13 @@ var getSRcollection = function(year, startDay, endYear, endDay,
                         'system:time_start'));
             }
             // Cloud, cloud shadow and snow mask.
-            var qa = img.select('pixel_qa');
-            var mask = qa.bitwiseAnd(8).eq(0).and(
-                qa.bitwiseAnd(16).eq(0)).and(
-                qa.bitwiseAnd(32).eq(0));
-            return dat.mask(mask);
-        });
+            var qaMask = img.select('QA_PIXEL').bitwiseAnd(parseInt('11111', 2)).eq(0);
+            return dat.mask(qaMask);
+            });
     return srCollection;
 };
 
-// 2.4 Combining the collections functio
+// 2.4 Combining the collections function
 var getCombinedSRcollection = function(year, startDay, endYear,
     endDay) {
     var lt5 = getSRcollection(year, startDay, endYear, endDay,
@@ -162,25 +159,25 @@ var getCombinedSRcollection = function(year, startDay, endYear,
 
 // 2.5 Calculating vegetation indices.
 var addIndices = function(image) {
-    var ndvi = image.normalizedDifference(['B4', 'B3']).rename(
+    var ndvi = image.normalizedDifference(['SR_B4', 'SR_B3']).rename(
         'NDVI');
     var evi = image.expression(
         '2.5 * ((NIR - RED) / (NIR + 6 * RED - 7.5 * BLUE + 1))', {
-            'NIR': image.select('B4'),
-            'RED': image.select('B3'),
-            'BLUE': image.select('B1')
+            'NIR': image.select('SR_B4'),
+            'RED': image.select('SR_B3'),
+            'BLUE': image.select('SR_B1')
         }).rename('EVI');
     var savi = image.expression(
         '((NIR - RED) / (NIR + RED + 0.5) * (0.5 + 1))', {
-            'NIR': image.select('B4'),
-            'RED': image.select('B3'),
-            'BLUE': image.select('B1')
+            'NIR': image.select('SR_B4'),
+            'RED': image.select('SR_B3'),
+            'BLUE': image.select('SR_B1')
         }).rename('SAVI');
-    var ndmi = image.normalizedDifference(['B7', 'B2']).rename(
+    var ndmi = image.normalizedDifference(['SR_B7', 'SR_B2']).rename(
         'NDMI');
-    var ndwi = image.normalizedDifference(['B5', 'B4']).rename(
+    var ndwi = image.normalizedDifference(['SR_B5', 'SR_B4']).rename(
         'NDWI');
-    var mndwi = image.normalizedDifference(['B2', 'B5']).rename(
+    var mndwi = image.normalizedDifference(['SR_B2', 'SR_B5']).rename(
         'MNDWI');
     return image.addBands(ndvi)
         .addBands(evi)
@@ -232,8 +229,8 @@ var numImages = series.select(index).count().mask(extentBuffer);
 var anomaly = seriesSum.divide(numImages);
 
 var visAnon = {
-    min: -0.20,
-    max: 0.20,
+    min: -0.10,
+    max: 0.10,
     palette: ['#481567FF', '#482677FF', '#453781FF', '#404788FF',
         '#39568CFF', '#33638DFF', '#2D708EFF', '#287D8EFF',
         '#238A8DFF',
@@ -256,7 +253,7 @@ Map.addLayer(lossfromndvi, {
     palette: ['orange']
 }, 'Loss from Anomaly 00-20');
 
-var thresholdGain = 0.20;
+var thresholdGain = 0.05;
 var gainfromndvi = anomaly.gte(thresholdGain)
     .selfMask()
     .updateMask(
