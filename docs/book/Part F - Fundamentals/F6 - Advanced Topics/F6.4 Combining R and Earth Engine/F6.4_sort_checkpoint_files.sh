@@ -10,7 +10,7 @@ list_unused_auto_converted_files=(
 'F64g Checkpoint_geemap'
 )
 
-js_file_name='./1.JS'
+js_file_name='./1.javascript'
 auto_converted_file_name='./2.auto-converted'
 refined_file_name='./3.refined-working'
 
