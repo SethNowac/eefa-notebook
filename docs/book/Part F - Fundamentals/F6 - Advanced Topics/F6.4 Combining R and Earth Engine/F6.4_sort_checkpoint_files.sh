@@ -14,6 +14,11 @@ js_file_name='./1.javascript'
 auto_converted_file_name='./2.auto-converted'
 refined_file_name='./3.refined-working'
 
+# Prep stage: if js directory already exists, move everything out of it
+if [ -d $js_file_name ]; then
+    mv $js_file_name/* .
+fi
+
 # Cleanup stage 1: remove duplicate checkpoints
 find . -type f -not -name '*_geemap.ipynb' -name '*.ipynb' -exec rm -f {} +
 find . -type f -not -name '*_geemap.py' -name '*.py' -exec rm -f {} +
