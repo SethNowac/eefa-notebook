@@ -8,35 +8,68 @@ from . import dates_geemap as dateUtils
 from . import ccdc_geemap as ccdcUtils
 
 def getLandsat(options):
-    start = (options is not None and options['start']) or '1980-01-01'
-    end = (options is not None and options['end']) or '2021-01-01'
-    startDoy = (options is not None and options['startDOY']) or 1
-    endDoy = (options is not None and options['endDOY']) or 366
-    region = (options is not None and options['region']) or None
-    targetBands = (options is not None and options['targetBands']) or ['BLUE','GREEN','RED','NIR','SWIR1','SWIR2','TEMP','NBR','NDFI','NDVI','GV','NPV','Shade','Soil']
-    useMask = (options is not None and options['useMask']) or True
-    sensors = (options is not None and options['sensors']) or {'l4': True, 'l5': True, 'l7': True, 'l8': True}
+    collection = options['collection'] if options is not None and 'collection' in options else 2
+    start = options['start'] if options is not None and 'start' in options else '1980-01-01'
+    end = options['end'] if options is not None and 'end' in options else '2023-01-01'
+    startDoy = options['startDOY'] if options is not None and 'startDOY' in options else 1
+    endDoy = options['endDOY'] if options is not None and 'endDOY' in options else 366
+    region = options['region'] if options is not None and 'region' in options else None
+    targetBands = options['targetBands'] if options is not None and 'targetBands' in options else ['BLUE','GREEN','RED',
+    'NIR','SWIR1','SWIR2','TEMP', 'NBR','NDFI','NDVI','GV','NPV','Shade','Soil',
+    'EVI', 'EVI2', 'BRIGHTNESS', 'GREENNESS', 'WETNESS']
+    useMask = options['useMask'] if options is not None and 'useMask' in options else True
+    sensors = options['sensors'] if options is not None and 'sensors' in options else {'l4': True, 'l5': True, 'l7': True, 'l8': True}
 
-    # Filter using new filtering functions
-    collection4 = ee.ImageCollection('LANDSAT/LT04/C01/T1_SR') \
-    .filterDate(start, end)
-    collection5 = ee.ImageCollection('LANDSAT/LT05/C01/T1_SR') \
-    .filterDate(start, end)
-    collection7 = ee.ImageCollection('LANDSAT/LE07/C01/T1_SR') \
-    .filterDate(start, end)
-    collection8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_SR') \
-    .filterDate(start, end)
     if (useMask == 'No'):
         useMask = False
 
-    if (useMask):
-        collection8 = collection8.map(prepareL8)
-        collection7 = collection7.map(prepareL7)
-        collection5 = collection5.map(prepareL4L5)
-        collection4 = collection4.map(prepareL4L5)
+
+    # Define collection to use and select band names and functions accordingly
+    if (collection == 1):
+        print("Landsat collection 1 has been deprecated")
+    if (collection == 2):
+        collection8 = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2') \
+        .filterDate(start, end)
+        collection7 = ee.ImageCollection('LANDSAT/LE07/C02/T1_L2') \
+        .filterDate(start, end)
+        collection5 = ee.ImageCollection('LANDSAT/LT05/C02/T1_L2') \
+        .filterDate(start, end)
+        collection4 = ee.ImageCollection('LANDSAT/LT04/C02/T1_L2') \
+        .filterDate(start, end)
+
+        if (useMask):
+            collection8 = collection8.map(prepareL8Col2)
+            collection7 = collection7.map(prepareL4L5L7Col2)
+            collection5 = collection5.map(prepareL4L5L7Col2)
+            collection4 = collection4.map(prepareL4L5L7Col2)
+
+        else:
+            bandListL8 = ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7', 'SR_B10']
+            nameListL8 = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2', 'TEMP']
+            bandListL457 = ['SR_B1', 'SR_B2','SR_B3','SR_B4','SR_B5','SR_B7','ST_B6']
+            nameListL457 = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2', 'TEMP']
+
+            def func_zpa(i):
+                return i.select(bandListL8).rename(nameListL8)
+            collection8 = collection8.map(func_zpa)
 
 
+            def func_obo(i):
+                return i.select(bandListL457).rename(nameListL457)
+            collection7 = collection7.map(func_obo)
 
+
+            def func_fmg(i):
+                return i.select(bandListL457).rename(nameListL457)
+            collection4 = collection4.map(func_fmg)
+
+
+            def func_jnv(i):
+                return i.select(bandListL457).rename(nameListL457)
+            collection5 = collection5.map(func_jnv)
+
+
+    # Merge all collections, compute indices and filter if requested
     col = collection4.merge(collection5) \
     .merge(collection7) \
     .merge(collection8)
@@ -63,10 +96,9 @@ def getLandsat(options):
     return ee.ImageCollection(indices)
 
 
-
 def doIndices(collection):
 
-    def func_ulk(image):
+    def func_oma(image):
         NDVI =  calcNDVI(image)
         NBR = calcNBR(image)
         EVI = calcEVI(image)
@@ -77,7 +109,7 @@ def doIndices(collection):
         NDFI = calcNDFI(image.select(BANDS))
         return image.addBands([NDVI, NBR, EVI, EVI2, TC, NDFI])
 
-    return collection.map(func_ulk)
+    return collection.map(func_oma)
 
 
 
@@ -91,7 +123,7 @@ def doIndices(collection):
 
 
 
-def getS2(roi):
+def getS2_old(roi):
     # Sentinel-2 Level 1C data.  Bands B7, B8, B8A and B10 from this
     # dataset are needed as input to CDI and the cloud mask function.
     s2 = ee.ImageCollection('COPERNICUS/S2')
@@ -114,9 +146,9 @@ def getS2(roi):
     s2Sr = s2Sr.filterDate(start, end) \
     .select(['B2', 'B3', 'B4', 'B5','B8','B11','B12'])
     if (roi):
-            s2 = s2.filterBounds(roi)
-            s2c = s2c.filterBounds(roi)
-            s2Sr = s2Sr.filterBounds(roi)
+        s2 = s2.filterBounds(roi)
+        s2c = s2c.filterBounds(roi)
+        s2Sr = s2Sr.filterBounds(roi)
 
     # Join two collections on their 'system:index' property.
     # The propertyName parameter is the name of the property
@@ -131,10 +163,10 @@ def getS2(roi):
         ))
         # Merge the bands of the joined image.
 
-        def func_bkc(image):
+        def func_xdl(image):
             return image.addBands(ee.Image(image.get(propertyName)))
 
-        return joined.map(func_bkc)
+        return joined.map(func_xdl)
 
 
 
@@ -196,7 +228,6 @@ def calcNBR(image):
 
 
 def calcNDFI(image):
-    # Do spectral unmixing #
     gv = [.0500, .0900, .0400, .6100, .3000, .1000]
     shade = [0, 0, 0, 0, 0, 0]
     npv = [.1400, .1700, .2200, .3000, .5500, .3000]
@@ -236,7 +267,6 @@ def calcEVI(image):
     }).rename('EVI')
 
     return evi
-
 
 
 def calcEVI2(image):
@@ -315,9 +345,9 @@ def tcTrans(image):
 def makeLatGrid(minY, maxY, minX, maxX, size):
 
     ySeq = ee.List.sequence(minY, maxY, size)
-    numFeats = ySeq.length().subtract(2)
+    numFeats = ySeq.__len__()().subtract(2)
 
-    def func_qfw(num):
+    def func_yln(num):
         num = ee.Number(num)
         num2 = num.add(1)
         y1 = ee.Number(ySeq.get(num))
@@ -325,7 +355,7 @@ def makeLatGrid(minY, maxY, minX, maxX, size):
         feat = ee.Feature(ee.Geometry.Polygon([[maxX, y2], [minX, y2], [minX, y1], [maxX, y1]]))
         return feat
 
-    feats = ee.List.sequence(0, numFeats).map(func_qfw)
+    feats = ee.List.sequence(0, numFeats).map(func_yln)
 
 
 
@@ -342,9 +372,9 @@ def makeLatGrid(minY, maxY, minX, maxX, size):
 def makeLonGrid(minY, maxY, minX, maxX, size):
 
     ySeq = ee.List.sequence(minX, maxX, size)
-    numFeats = ySeq.length().subtract(2)
+    numFeats = ySeq.__len__()().subtract(2)
 
-    def func_vve(num):
+    def func_nbk(num):
         num = ee.Number(num)
         num2 = num.add(1)
         x1 = ee.Number(ySeq.get(num))
@@ -352,7 +382,7 @@ def makeLonGrid(minY, maxY, minX, maxX, size):
         feat = ee.Feature(ee.Geometry.Polygon([[x2, maxY], [x1, maxY], [x1, minY], [x2, minY]]))
         return feat
 
-    feats = ee.List.sequence(0, numFeats).map(func_vve)
+    feats = ee.List.sequence(0, numFeats).map(func_nbk)
 
 
 
@@ -369,24 +399,24 @@ def makeLonLatGrid(minY, maxY, minX, maxX, size):
     xSeq = ee.List.sequence(minX, maxX, size)
     ySeq = ee.List.sequence(minY, maxY, size)
 
-    numFeatsY = ySeq.length().subtract(2)
-    numFeatsX = xSeq.length().subtract(2)
+    numFeatsY = ySeq.__len__()().subtract(2)
+    numFeatsX = xSeq.__len__()().subtract(2)
 
 
-    def func_edh(y):
+    def func_its(y):
         y = ee.Number(y)
         y2 = y.add(1)
         y1_val = ee.Number(ySeq.get(y))
         y2_val = ee.Number(ySeq.get(y2))
 
-        def func_aeq(x):
+        def func_zzd(x):
                 x = ee.Number(x)
                 x2 = x.add(1)
                 x1_val = ee.Number(xSeq.get(x))
                 x2_val = ee.Number(xSeq.get(x2))
                 return ee.Feature(ee.Geometry.Polygon([[x2_val, y2_val], [x1_val, y2_val], [x1_val, y1_val], [x2_val, y1_val]]))
 
-        feat = ee.List.sequence(0, numFeatsX).map(func_aeq)
+        feat = ee.List.sequence(0, numFeatsX).map(func_zzd)
 
 
 
@@ -396,29 +426,27 @@ def makeLonLatGrid(minY, maxY, minX, maxX, size):
         return feat
 
 
-    feats = ee.List.sequence(0, numFeatsY).map(func_edh)
+    feats = ee.List.sequence(0, numFeatsY).map(func_its)
 
     return ee.FeatureCollection(feats.flatten())
-
-
 
 
 def makeAutoGrid(geo, size):
     coordList = ee.List(geo.coordinates().get(0))
 
 
-    def func_cal (c):
+    def func_fjj (c):
         return ee.List(c).flatten().get(0)
 
-    lonList = coordList.map(func_cal)
+    lonList = coordList.map(func_fjj)
 
 
 
 
-    def func_gph (c):
+    def func_wtb (c):
         return ee.List(c).flatten().get(1)
 
-    latList = coordList.map(func_gph)
+    latList = coordList.map(func_wtb)
 
 
 
@@ -433,41 +461,34 @@ def makeAutoGrid(geo, size):
     xSeq = ee.List.sequence(minX, maxX, size)
     ySeq = ee.List.sequence(minY, maxY, size)
 
-    numFeatsY = ySeq.length().subtract(2)
-    numFeatsX = xSeq.length().subtract(2)
+    numFeatsY = ySeq.__len__()().subtract(2)
+    numFeatsX = xSeq.__len__()().subtract(2)
 
 
-    def func_lok(y):
+    def func_fbl(y):
         y = ee.Number(y)
         y2 = y.add(1)
         y1_val = ee.Number(ySeq.get(y))
         y2_val = ee.Number(ySeq.get(y2))
 
-        def func_pnc(x):
+        def func_gqt(x):
                 x = ee.Number(x)
                 x2 = x.add(1)
                 x1_val = ee.Number(xSeq.get(x))
                 x2_val = ee.Number(xSeq.get(x2))
                 return ee.Feature(ee.Geometry.Polygon([[x2_val, y2_val], [x1_val, y2_val], [x1_val, y1_val], [x2_val, y1_val]]))
 
-        feat = ee.List.sequence(0, numFeatsX).map(func_pnc)
-
-
-
-
-
+        feat = ee.List.sequence(0, numFeatsX).map(func_gqt)
 
         return feat
 
 
-    feats = ee.List.sequence(0, numFeatsY).map(func_lok)
-
+    feats = ee.List.sequence(0, numFeatsY).map(func_fbl)
 
     return ee.FeatureCollection(feats.flatten())
 
 
 def getAncillary():
-
     srtm = ee.Image('USGS/SRTMGL1_003').rename('ELEVATION')
     alos =  ee.Image("JAXA/ALOS/AW3D30/V2_2").select(0).rename('ELEVATION')
     demImage = ee.ImageCollection([alos,srtm]).mosaic()
@@ -507,7 +528,32 @@ def getAncillary():
 
 
 
+def maskS2clouds(image):
+    qa = image.select('QA60')
 
+    # Bits 10 and 11 are clouds and cirrus, respectively.
+    cloudBitMask = 1 << 10
+    cirrusBitMask = 1 << 11
+
+    # Both flags should be set to zero, indicating clear conditions.
+    mask = qa.bitwiseAnd(cloudBitMask).eq(0).And(
+    qa.bitwiseAnd(cirrusBitMask).eq(0))
+
+    # Return the masked and scaled data, without the QA bands.
+    return image.updateMask(mask) \
+    .select('B2', 'B3', 'B4','B8','B11','B12') \
+    .rename(['BLUE','GREEN','RED','NIR','SWIR1','SWIR2']) \
+    .divide(10000) \
+    .copyProperties(image, ["system:time_start"])
+
+
+
+def getS2(roi):
+    # Sentinel-2 surface reflectance data for the composite.
+    s2Sr = ee.ImageCollection('COPERNICUS/S2_SR')
+    if (roi): s2Sr = s2Sr.filterBounds(roi)
+    s2Sr = s2Sr.map(maskS2clouds)
+    return doIndices(s2Sr)
 
 
 def prepare(orbit):
@@ -529,7 +575,7 @@ def getS1(focalSize, kernelType):
     .filter(ee.Filter.eq('instrumentMode', 'IW')) \
     .select(['V.','angle'])
 
-    def func_uqt(img):
+    def func_ygn(img):
         geom = img.geometry()
         angle = img.select('angle')
         edge = img.select('VV').lt(-30.0); 
@@ -537,8 +583,29 @@ def getS1(focalSize, kernelType):
         fmean = img.select('V.').add(30).focal_mean(focalSize, kernelType)
         ratio = fmean.select('VH').divide(fmean.select('VV')).rename('ratio').multiply(30)
         return img.select().addBands(fmean).addBands(ratio).addBands(angle) \
-    .map(func_uqt)
+    .map(func_ygn)
 
+
+
+
+
+
+
+
+
+    # .select(['V.','angle'])
+
+    #def func_mlu(img):
+        #   angle = img.select('angle').sample({numPixels: 1}).first().get('angle')
+        #   angleReversed = img.select('angle').multiply(-1).rename('angleReversed')
+        #   edge = img.select('VV').lt(-30.0); #-30
+
+        #   fmean = img.select('V.').add(30).focal_mean(focalSize, kernelType )
+        #   ratio = fmean.select('VH').divide(fmean.select('VV')).rename('ratio').multiply(30)
+        #   smoothed = img.select('angle').addBands([fmean, ratio, angleReversed])
+        #   return smoothed.updateMask(edge.Not()).set('angle',angle)
+    #
+    # .map(func_mlu)
 
 
 
@@ -553,8 +620,6 @@ def getS1(focalSize, kernelType):
 
 
 
-
-
 def prepareL4L5(image):
     bandList = ['B1', 'B2','B3','B4','B5','B7','B6']
     nameList = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2', 'TEMP']
@@ -562,7 +627,7 @@ def prepareL4L5(image):
     scaled = ee.Image(image).select(bandList).rename(nameList).divide(ee.Image.constant(scaling))
 
     validQA = [66, 130, 68, 132]
-    mask1 = ee.Image(image).select(['pixel_qa']).remap(validQA, ee.List.repeat(1, len(validQA)), 0)
+    mask1 = ee.Image(image).select(['pixel_qa']).remap(validQA, ee.List.repeat(1, validQA.__len__()), 0)
     # Gat valid data mask, for pixels without band saturation
     mask2 = image.select('radsat_qa').eq(0)
     mask3 = image.select(bandList).reduce(ee.Reducer.min()).gt(0)
@@ -580,7 +645,7 @@ def prepareL7(image):
     scaled = ee.Image(image).select(bandList).rename(nameList).divide(ee.Image.constant(scaling))
 
     validQA = [66, 130, 68, 132]
-    mask1 = ee.Image(image).select(['pixel_qa']).remap(validQA, ee.List.repeat(1, len(validQA)), 0)
+    mask1 = ee.Image(image).select(['pixel_qa']).remap(validQA, ee.List.repeat(1, validQA.__len__()), 0)
     # Gat valid data mask, for pixels without band saturation
     mask2 = image.select('radsat_qa').eq(0)
     mask3 = image.select(bandList).reduce(ee.Reducer.min()).gt(0)
@@ -602,36 +667,98 @@ def prepareL8(image):
     validQA = [322, 386, 324, 388, 836, 900]
 
     scaled = ee.Image(image).select(bandList).rename(nameList).divide(ee.Image.constant(scaling))
-    mask1 = ee.Image(image).select(['pixel_qa']).remap(validQA, ee.List.repeat(1, len(validQA)), 0)
+    mask1 = ee.Image(image).select(['pixel_qa']).remap(validQA, ee.List.repeat(1, validQA.__len__()), 0)
     mask2 = image.select('radsat_qa').eq(0)
     mask3 = image.select(bandList).reduce(ee.Reducer.min()).gt(0)
-    mask4 = ee.Image(image).select(['sr_aerosol']).remap(validTOA, ee.List.repeat(1, len(validTOA)), 0)
+    mask4 = ee.Image(image).select(['sr_aerosol']).remap(validTOA, ee.List.repeat(1, validTOA.__len__()), 0)
     return ee.Image(image).addBands(scaled).updateMask(mask1.And(mask2).And(mask3).And(mask4))
 
 
-def generateCollection(geom, startDate, endDate):
-    filteredL8 = (ee.ImageCollection('LANDSAT/LC08/C01/T1_SR') \
-    .filter("WRS_ROW < 122") \
-    .filterBounds(geom) \
-    .map(prepareL8))
 
-    filteredL7 = (ee.ImageCollection('LANDSAT/LE07/C01/T1_SR') \
-    .filter("WRS_ROW < 122") \
-    .filterBounds(geom) \
-    .map(prepareL7))
+def prepareL4L5L7Col2(image):
 
-    # Originally not included in Noel's run
-    filteredL4 = (ee.ImageCollection('LANDSAT/LT04/C01/T1_SR') \
-    .filter("WRS_ROW < 122") \
-    .filterBounds(geom) \
-    .map(prepareL4L5))
-    filteredL5 = (ee.ImageCollection('LANDSAT/LT05/C01/T1_SR') \
-    .filter("WRS_ROW < 122") \
-    .filterBounds(geom) \
-    .map(prepareL4L5))
+    bandList = ['SR_B1','SR_B2','SR_B3','SR_B4','SR_B5','SR_B7','ST_B6']
+    nameList = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2', 'TEMP']
+    subBand = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2']
 
-    mergedCollections = ee.ImageCollection(filteredL8).merge(filteredL7).merge(filteredL5).merge(filteredL4)
-    return mergedCollections.filterDate(startDate, endDate)
+    opticalBands = image.select('SR_B.').multiply(0.0000275).add(-0.2)
+    thermalBand = image.select('ST_B6').multiply(0.00341802).add(149.0)
+    scaled = opticalBands.addBands(thermalBand, None, True).select(bandList) \
+    .rename(nameList)
+
+    validQA = [5440, 5504]  
+
+    mask1 = ee.Image(image).select(['QA_PIXEL']).remap(
+    validQA, ee.List.repeat(1, validQA.__len__()), 0)
+    # Gat valid data mask, for pixels without band saturation
+    mask2 = image.select('QA_RADSAT').eq(0)
+    mask3 = scaled.select(subBand).reduce(ee.Reducer.min()).gt(0)
+    mask4 = scaled.select(subBand).reduce(ee.Reducer.max()).lt(1)
+    # Mask hazy pixels using AOD threshold
+    mask5 = (image.select("SR_ATMOS_OPACITY").unmask(-1)).lt(300)
+    return ee.Image(image).addBands(scaled) \
+    .updateMask(mask1.And(mask2).And(mask3).And(mask4).And(mask5))
+
+
+
+def prepareL8Col2(image):
+
+    bandList = ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7', 'ST_B10']
+    nameList = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2', 'TEMP']
+    subBand = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2']
+
+    opticalBands = image.select('SR_B.').multiply(0.0000275).add(-0.2)
+    thermalBand = image.select('ST_B10').multiply(0.00341802).add(149.0)
+    scaled = opticalBands.addBands(thermalBand, None, True).select(bandList) \
+    .rename(nameList)
+
+    validTOA = [2, 4, 32, 66, 68, 96, 100, 130, 132, 160, 164]
+    validQA = [21824, 21888] 
+
+    mask1 = ee.Image(image).select(['QA_PIXEL']).remap(
+    validQA, ee.List.repeat(1, validQA.__len__()), 0)
+    mask2 = image.select('QA_RADSAT').eq(0)
+    # Assume that all saturated pixels equal to 20000
+    mask3 = scaled.select(subBand).reduce(ee.Reducer.min()).gt(0)
+    mask4 = scaled.select(subBand).reduce(ee.Reducer.max()).lt(1)
+    mask5 = ee.Image(image).select(['SR_QA_AEROSOL']).remap(
+    validTOA, ee.List.repeat(1, validTOA.__len__()), 0)
+
+    return ee.Image(image).addBands(scaled) \
+    .updateMask(mask1.And(mask2).And(mask3).And(mask4).And(mask5))
+
+
+
+def generateCollection(geom, startDate, endDate, collection):
+    collection = collection or 1
+
+    if (collection == 1):
+        print("Collection 1 has been deprecated".getInfo())
+    if (collection == 2):
+        filteredL8 = (ee.ImageCollection('LANDSAT/LC08/C02/T1_L2') \
+        .filter("WRS_ROW < 122") \
+        .filterBounds(geom) \
+        .map(prepareL8Col2))
+
+        filteredL7 = (ee.ImageCollection('LANDSAT/LE07/C02/T1_L2') \
+        .filter("WRS_ROW < 122") \
+        .filterBounds(geom) \
+        .map(prepareL4L5L7Col2))
+
+        # Originally not included in Noel's run
+        filteredL4 = (ee.ImageCollection('LANDSAT/LT04/C02/T1_L2') \
+        .filter("WRS_ROW < 122") \
+        .filterBounds(geom) \
+        .map(prepareL4L5L7Col2))
+        filteredL5 = (ee.ImageCollection('LANDSAT/LT05/C02/T1_L2') \
+        .filter("WRS_ROW < 122") \
+        .filterBounds(geom) \
+        .map(prepareL4L5L7Col2))
+
+
+    mergedCollections = ee.ImageCollection(filteredL8).merge(filteredL7) \
+    .merge(filteredL5).merge(filteredL4).filterDate(startDate, endDate)
+    return mergedCollections
 
 
 
@@ -655,7 +782,5 @@ def makeCcdImage(metadataFilter, segs, numberOfSegments,bandNames,inputFeatures,
 
     # Turn array image into image
     return ee.Image(ccdcUtils.buildCcdImage(ccdc, numberOfSegments, bandNames))
-
-
 
 m

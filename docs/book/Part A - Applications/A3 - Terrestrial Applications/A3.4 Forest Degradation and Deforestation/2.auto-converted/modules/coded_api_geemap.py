@@ -278,8 +278,8 @@ def func_hnn(params):
     # ----------------- Run Analysis
 
     # Run CCDC/CODED
-    output['Layers']['rawChangeOutput'] = ee.Algorithms.TemporalSegmentation.Ccdc(changeDetectionParams)
-    output['Layers']['formattedChangeOutput'] = utils.CCDC.buildCcdImage(output['Layers']['rawChangeOutput'], generalParams['segs'].__len__(), generalParams['classBands'])
+    output['Layers']['rawChangeOutput'] = ee.Algorithms.TemporalSegmentation.Ccdc(**changeDetectionParams)
+    output['Layers']['formattedChangeOutput'] = utils.CCDC.buildCcdImage(output['Layers']['rawChangeOutput'], len(generalParams['segs']), generalParams['classBands'])
     # prepTraining = True
     if (params['prepTraining']):
 
@@ -325,15 +325,13 @@ def func_hnn(params):
     else:
             sampleForTraining = params['training']
     # print(sampleForTraining.getInfo())
-
     # Format classification parameters and extract values  
     classParams['imageToClassify'] = output['Layers']['formattedChangeOutput']
     classParams['trainingData'] = sampleForTraining
     def func_keyMap(key): return classParams[key]
-    vals = classParams.keys().map(func_keyMap)
-
+    vals = list(map((lambda x: func_keyMap(x)), list(classParams.keys())))
     # Run classification
-    output['Layers']['classificationRaw'] = utils.Classification.classifySegments.apply(None, vals)
+    output['Layers']['classificationRaw'] = utils.Classification.classifySegments(*vals)#.apply(None, vals)
 
     if ('mask' not in output['Layers']):
         output['Layers']['mask'] = output['Layers']['classificationRaw'].select(0).eq(generalParams.get('forestValue'))
@@ -388,9 +386,9 @@ def func_hnn(params):
     defMagBands = []
     magIndices = []
     for i in range(1, generalParams['segs'].__len__(), 1):
-            degMagBands.push('DegradationMagnitude_' + i)
-            defMagBands.push('DeforestationMagnitude_' + i)
-            magIndices.push(i-1)
+            degMagBands.append('DegradationMagnitude_' + str(i))
+            defMagBands.append('DeforestationMagnitude_' + str(i))
+            magIndices.append(i-1)
 
     degIndices = output['Layers']['classificationStudyPeriod'] \
     .eq(generalParams['forestValue'])
@@ -520,12 +518,12 @@ def parameterization(training, testing, collection, chi2s, consecs, prepTraining
 
             outGeo = training.first().geometry()
             outFeat = ee.Feature(outGeo).setMulti(outParams)
-            listOfFeats.push(outFeat)
+            listOfFeats.append(outFeat)
             if (exportEach):
                 geemap.ee_export_vector_to_asset(
                 collection=ee.FeatureCollection([outFeat,outFeat]),
                 description='parameter_testing_point',
-                assetId='amazon/results_2021/parameters_' + chi_index + '_' + consec_index
+                assetId='amazon/results_2021/parameters_' + str(chi_index) + '_' + str(consec_index)
                 )
 
     return ee.FeatureCollection(listOfFeats)
@@ -671,18 +669,18 @@ def func_ard(results, folder, geo, size, asset, prefix, min, max,startPrefix):
     def func_ncr(obj):
         for i in range(0, obj, 1):
             i_adj = i + startPrefix
-            outName = folder + '/' + prefix + '_' + i_adj
+            outName = str(folder) + '/' + str(prefix) + '_' + str(i_adj)
 
             outGeo = ee.Feature(exportList.get(i)).geometry()
             if (i >= min and i <= max and folderAssets.indexOf(outName)):
-                m.addLayer(outGeo, {}, 'task_' + i)
+                m.addLayer(outGeo, {}, 'task_' + str(i))
                 geemap.ee_export_image_to_asset(
                     image=results,
                     scale=30,
                     pyramidingPolicy={
                         '.default':'mean'
                     },
-                    description='task_' + i_adj,
+                    description='task_' + str(i_adj),
                     assetId=outName,
                     region=outGeo,
                     maxPixels=1e13
@@ -717,7 +715,7 @@ def prepOutput(results, layers, numChanges, dateInt, maskProb,yearSubtract, flip
     changeIndices = []
     outLayers = []
     for i in range(0,numChanges):
-        changeIndices.push(i)
+        changeIndices.append(i)
 
     degradation = results.Layers.DatesOfDegradation.rename(['degradation_1','degradation_2','degradation_3','degradation_4']).select(changeIndices)
     deforestation = results.Layers.DatesOfDeforestation.rename(['deforestation_1','deforestation_2','deforestation_3','deforestation_4']).select(changeIndices)
@@ -754,41 +752,41 @@ def prepOutput(results, layers, numChanges, dateInt, maskProb,yearSubtract, flip
     classificationStudyPeriod = results.Layers.classificationStudyPeriod
     raw = results.Layers.rawChangeOutput
 
-    if (layers.degradation):
-        outLayers.push(degradation)
+    if ('degradation' in layers):
+        outLayers.append(degradation)
 
-    if (layers.deforestation):
-        outLayers.push(deforestation)
+    if ('deforestation' in layers):
+        outLayers.append(deforestation)
 
-    if (layers.forestMask):
-        outLayers.push(forestMask)
+    if ('forestMask' in layers):
+        outLayers.append(forestMask)
 
-    if (layers.magnitude):
-        outLayers.push(magnitude)
+    if ('magnitude' in layers):
+        outLayers.append(magnitude)
 
-    if (layers.magnitudeDegradation):
-        outLayers.push(magDegradation)
+    if ('magnitudeDegradation' in layers):
+        outLayers.append(magDegradation)
 
-    if (layers.magnitudeDeforestation):
-        outLayers.push(magDeforestation)
+    if ('magnitudeDeforestation' in layers):
+        outLayers.append(magDeforestation)
 
-    if (layers.probability):
-        outLayers.push(probability)
+    if ('probability' in layers):
+        outLayers.append(probability)
 
-    if (layers.rawOutput):
-        outLayers.push(raw)
+    if ('rawOutput' in layers):
+        outLayers.append(raw)
 
-    if (layers.stratification):
-        outLayers.push(stratification)
+    if ('stratification' in layers):
+        outLayers.append(stratification)
 
-    if (layers.classification):
-        outLayers.push(classification)
+    if ('classification' in layers):
+        outLayers.append(classification)
 
-    if (layers.classificationRaw):
-        outLayers.push(classificationRaw)
+    if ('classificationRaw' in layers):
+        outLayers.append(classificationRaw)
 
-    if (layers.classificationStudyPeriod):
-        outLayers.push(classificationStudyPeriod)
+    if ('classificationStudyPeriod' in layers):
+        outLayers.append(classificationStudyPeriod)
 
 
     return ee.Image.cat(outLayers).selfMask()

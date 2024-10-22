@@ -8,12 +8,12 @@ Map = geemap.Map()
 # on 11/4/2020 (reformated)
 
 
-def func_kpl (collection, options):
+def func_kpl (collection, options = None):
     # Set defaults     if undefined.
-    options = options or {}
-    model = options.model or 'volume'
-    elevation = options.elevation or ee.Image('USGS/SRTMGL1_003')
-    buffer = options.buffer or 0
+    options = options is not None or {}
+    model = 'model' in options or 'volume'
+    elevation = 'elevation' in options or ee.Image('USGS/SRTMGL1_003')
+    buffer = 'buffer' in options or 0
 
     # We need a 90 degree in radians
     # image for a couple of calculations.
@@ -153,12 +153,12 @@ def func_kpl (collection, options):
 slope_correction = func_kpl
 
 
-def func_vfb (image, options):
+def func_vfb (image, options = None):
     # Set defaults     if undefined.
-    options = options or {}
-    model = options.model or 'volume'
-    elevation = options.elevation or ee.Image('USGS/SRTMGL1_003')
-    buffer = options.buffer or 0
+    options = options is not None or {}
+    model = 'model' in options or 'volume'
+    elevation = 'elevation' in options or ee.Image('USGS/SRTMGL1_003')
+    buffer = 'buffer' in options or 0
 
     # We need a 90 degree in radians
     # image for a couple of calculations.

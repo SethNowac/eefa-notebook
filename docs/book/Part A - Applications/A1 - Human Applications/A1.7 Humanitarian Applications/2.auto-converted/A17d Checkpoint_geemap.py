@@ -1,7 +1,11 @@
-import ee 
+import ee
 import geemap
+import geemap.chart as chart
 
 Map = geemap.Map()
+
+# Add Earth Engine dataset
+image = ee.Image("USGS/SRTMGL1_003")
 
 #  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #  Chapter:      A1.7 Humanitarian Applications
@@ -64,9 +68,9 @@ postMedian = ic.filterDate('2017-01-01', '2017-12-31').median() \
 .clip(bufferedBounds)
 
 # Import visualization palettes https:#github.com/gee-community/ee-palettes.
-palettes = require('users/gena/packages:palettes')
-greenPalette = palettes.colorbrewer.Greens[9]
-prGreenPalette = palettes.colorbrewer.PRGn[9]
+from modules import palettes_geemap as palettes
+greenPalette = palettes.colorbrewer['Greens'][9]
+prGreenPalette = palettes.colorbrewer['PRGn'][9]
 
 # Set-up "True color" visualization parameters.
 TCImageVisParam = {
@@ -145,34 +149,37 @@ combinedNDVI = preMedian.select(['NDVI'], ['pre-NDVI']) \
 .addBands(postMedian.select(['NDVI'], ['post-NDVI']))
 
 prePostNDVIFrequencyChart = \
-ui.Chart.image.histogram(
+chart.image_histogram(
 image = combinedNDVI,
 region = bufferedBounds,
-scale = 30
-).setSeriesNames(['Pre-Establishment', 'Post-Establishment']) \
-.setOptions(
-title = 'NDVI Frequency Histogram',
-hAxis = {
+scale = 30,
+max_buckets=None,
+min_bucket_width=None,
+max_raw=None,
+max_pixels=None,
+kwargs={
+'seriesNames': ['Pre-Establishment', 'Post-Establishment'],
+'title': 'NDVI Frequency Histogram',
+'hAxis': {
     'title': 'NDVI',
     'titleTextStyle': {
             'italic': False,
             'bold': True
         },
 },
-vAxis =
+'vAxis':
 {
-    title = 'Count',
-    titleTextStyle = {
+    'title': 'Count',
+    'titleTextStyle': {
             'italic': False,
             'bold': True
         }
 },
-colors = ['cf513e', '1d6b99']
-)
-print(prePostNDVIFrequencyChart.getInfo())
+'colors': ['cf513e', '1d6b99']
+})
 
 # Import package to support text annotation.
-text = require('users/gena/packages:text')
+from modules import text_geemap as text
 rgbVisParam = {
     'bands': ['red', 'green', 'blue'],
     'gamma': 1,
@@ -185,7 +192,7 @@ rgbVisParam = {
 videoArgs = {
     'region': bufferedBounds,
     'framesPerSecond': 3,
-    'scale': 10
+    'scale': ee.String('10')
 }
 
 annotations = [{
@@ -214,7 +221,7 @@ def addText(image):
 tempCol = ic.map(addText)
 
 # Click the URL to watch the time series video.
-print('L8 Time Series Video', tempCol.getVideoThumbURL(videoArgs).getInfo())
+print('L8 Time Series Video', tempCol.getVideoThumbURL(videoArgs))
 
 # -----------------------------------------------------------------------
 # CHECKPOINT
@@ -244,7 +251,7 @@ print('lcPts', lcPts.getInfo())
 
 # Create a function to set Feature properties based on value.
 
-def func_cot(f):
+def func_kvf(f):
     value = f.get('class')
     mapDisplayColors = ee.List(['#13a1ed', '#7d02bf',
     '#f0940a', '#d60909'
@@ -256,7 +263,7 @@ def func_cot(f):
             }
         })
 
-setColor = func_cot
+setColor = func_kvf
 
 
 
@@ -305,11 +312,11 @@ xLabels = chartBands
 title = 'Band Values',
 hAxis = {
     'title': 'Band Name',
-    'titleTextStyle': '{italic': False, 'bold': True},
+    'titleTextStyle': {'italic': False, 'bold': True},
 },
 vAxis = {
     'title': 'Reflectance (x1e4)',
-    'titleTextStyle': '{italic': False, 'bold': True}
+    'titleTextStyle': {'italic': False, 'bold': True}
 },
 colors = ['#13a1ed', '#7d02bf', '#f0940a','#d60909'],
 pointSize = 0,
@@ -344,7 +351,7 @@ hAxis = {
             'bold': True
         },
     #viewWindow = {min = wavelengths[0], max = wavelengths[2]}
-    scaleType = 'string'
+    'scaleType': 'string'
 },
 vAxis = {
     'title': 'Value',
@@ -452,14 +459,14 @@ Map.addLayer(pagirinyaOutline,
 # Intersect K-means polygons with UNHCR settlement boundary and
 # return intersection area as a feature property.
 
-def func_jmh(feat):
+def func_tgl(feat):
     boundaryIsect = pagirinya.intersection(feat, ee \
     .ErrorMargin(1))
     return ee.Feature(feat).set({
         'isectArea': boundaryIsect.area()
         })
 
-kMeansIntersect = kMeansCleanedPolygon.map(func_jmh)
+kMeansIntersect = kMeansCleanedPolygon.map(func_tgl)
 
 
 

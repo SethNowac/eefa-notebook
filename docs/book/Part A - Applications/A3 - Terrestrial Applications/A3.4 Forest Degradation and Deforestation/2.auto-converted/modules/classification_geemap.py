@@ -383,10 +383,8 @@ def getInputFeatures(seg, imageToClassify, predictors, bandNames, ancillary):
     str2 = ee.String('S') \
     .cat(ee.String(ee.Number(seg).int8())) \
     .cat('_')
-
     # Select bands to classify and add ancillary
     bands = imageToClassify.select([str])
-
     # Rename without prefix
 
     def func_evi(bn):
@@ -571,7 +569,19 @@ def classifyCoefs(imageToClassify, bandNames, ancillary, ancillaryFeatures, trai
 
 
 
-def classifySegments(imageToClassify, numberOfSegments, bandNames, ancillary, ancillaryFeatures, trainingData, classifier, studyArea, classProperty, coefs, trainProp, seed, subsetTraining):
+def classifySegments(imageToClassify,
+                     numberOfSegments,
+                     bandNames,
+                     ancillary,
+                     ancillaryFeatures,
+                     trainingData,
+                     classifier,
+                     studyArea,
+                     classProperty,
+                     coefs,
+                     trainProp,
+                     seed,
+                     subsetTraining):
     trainProp = trainProp or None
     studyArea = studyArea or None
     # subsetTraining = subsetTraining or None
@@ -580,17 +590,16 @@ def classifySegments(imageToClassify, numberOfSegments, bandNames, ancillary, an
 
     # Subset training data to studyarea if specified
     if (studyArea and subsetTraining != False):
-            trainingData = trainingData.filterBounds(studyArea)
+        trainingData = trainingData.filterBounds(studyArea)
     else:
-            trainingData = trainingData
+        trainingData = trainingData
         # Test withholding subset of data and classifying
     if (trainProp):
-            confMatrix = accuracyProcedure(trainingData, seed, trainProp)
+        confMatrix = accuracyProcedure(trainingData, seed, trainProp)
 
 
         # Input bands. All data will be initially queries and only these bands
         # will be eventually selected for classification.
-
     def func_zbb(b):
 
         def func_hkg(i):
@@ -605,7 +614,7 @@ def classifySegments(imageToClassify, numberOfSegments, bandNames, ancillary, an
     inputList = getInputFeatures(1, imageToClassify, predictors, bandNames, ancillary)
     inputFeatures = inputList[0]
 
-
+    
 
 
 
@@ -634,9 +643,9 @@ def classifySegments(imageToClassify, numberOfSegments, bandNames, ancillary, an
         .updateMask(imageToClassify.select(startName).neq(0)) \
         .rename([className]) \
         .int()
-
+    
     segmentsClassified = ee.List.sequence(1, numberOfSegments).map(func_gur)
-
+    
 
     # segmentsClassified is returned as a list so first convert to Collection
     classified = ee.ImageCollection(segmentsClassified)

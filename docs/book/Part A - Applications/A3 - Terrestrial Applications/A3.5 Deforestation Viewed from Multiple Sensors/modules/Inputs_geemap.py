@@ -24,7 +24,7 @@ def loadLandsatData(region, period):
         .rename(['Blue', 'Green', 'Red', 'NIR', 'SWIR1', 'SWIR2'])
     validQA = [21824, 21888]
     mask1 = img.select(['QA_PIXEL']) \
-        .remap(validQA, ee.List.repeat(1, validQA.length), 0)
+        .remap(validQA, ee.List.repeat(1, len(validQA)), 0)
     mask2 = sr.reduce(ee.Reducer.min()).gt(0)
     mask3 = sr.reduce(ee.Reducer.max()).lt(10000)
     return sr.updateMask(mask1.And(mask2).And(mask3))
@@ -35,7 +35,7 @@ def loadLandsatData(region, period):
         .rename(['Blue', 'Green', 'Red', 'NIR', 'SWIR1', 'SWIR2'])
     validQA = [5440, 5504]
     mask1 = img.select('QA_PIXEL') \
-        .remap(validQA, ee.List.repeat(1, validQA.length), 0)
+        .remap(validQA, ee.List.repeat(1, len(validQA)), 0)
     mask2 = sr.reduce(ee.Reducer.min()).gt(0)
     mask3 = sr.reduce(ee.Reducer.max()).lt(10000)
     return sr.updateMask(mask1.And(mask2).And(mask3))
@@ -65,7 +65,7 @@ def loadS2Data(region, period):
         .rename(['Blue', 'Green', 'Red', 'NIR', 'SWIR1', 'SWIR2']) \
         .updateMask(mask)
 
-  S2 = ee.ImageCollection('COPERNICUS/S2') \
+  S2 = ee.ImageCollection('COPERNICUS/S2_HARMONIZED') \
       .filterBounds(region) \
       .filterDate(period.get('start'), period.get('end'))
   S2Cloud = ee.ImageCollection('COPERNICUS/S2_CLOUD_PROBABILITY') \

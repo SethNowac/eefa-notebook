@@ -15,7 +15,7 @@ geometry3 = \
           [-47.54083123968921, -2.2204248963007274]]], None, False)
 geometry4 = ee.Geometry.MultiPoint()
 
-from ccdcUtilities import api_geemap as utils
+from . import api_geemap as utils
 
 def parameters():
     endmembers = {
@@ -211,42 +211,42 @@ def func_hnn(params):
 
     # Random Parameters
     generalParams = {}
-    generalParams['segs'] = params['segs'] or ['S1','S2','S3','S4','S5']
-    generalParams['classBands'] = params['classBands'] or utils.Inputs.getLandsat().filterBounds(generalParams.studyArea).first().bandNames().getInfo()
-    generalParams['coefs'] = params['coefs'] or ['INTP','SIN','COS','RMSE','SLP']
-    generalParams['forestValue'] = params['forestValue'] or 1
-    generalParams['studyArea'] = params['studyArea'] or ee.Geometry(m.getBounds(True))
-    generalParams['mask'] = params['forestMask'] 
-    generalParams['landsatCollection'] = params['landsatCollection'] or 1
+    generalParams['segs'] = params['segs'] if 'segs' in params else ['S1','S2','S3','S4','S5']
+    generalParams['classBands'] = params['classBands'] if 'classBands' in params else utils.Inputs.getLandsat().filterBounds(generalParams.get('studyArea')).first().bandNames().getInfo()
+    generalParams['coefs'] = params['coefs'] if 'coefs' in params else ['INTP','SIN','COS','RMSE','SLP']
+    generalParams['forestValue'] = params['forestValue'] if 'forestValue' in params else 1
+    generalParams['studyArea'] = params['studyArea'] if 'studyArea' in params else ee.Geometry(m.getBounds(True))
+    generalParams['mask'] = params.get('forestMask')
+    generalParams['landsatCollection'] = params['landsatCollection'] if 'landsatCollection' in params else 1
 
     # CODED Change Detection Parameters
     changeDetectionParams = {}
-    changeDetectionParams['collection'] = params['collection'] or utils.Inputs.getLandsat({'collection': generalParams['landsatCollection']})
+    changeDetectionParams['collection'] = params['collection'] if 'collection' in params else utils.Inputs.getLandsat({'collection': generalParams['landsatCollection']})
 
 
-    changeDetectionParams['breakpointBands'] = params['breakpointBands'] or ['NDFI']
+    changeDetectionParams['breakpointBands'] = params['breakpointBands'] if 'breakpointBands' in params else ['NDFI']
 
     # generalParams['allBands'] = generalParams.classBands+changeDetectionParams.breakpointBands
 
     changeDetectionParams['collection'] = changeDetectionParams['collection'] \
-    .filterBounds(generalParams.studyArea).select(generalParams.classBands)
+    .filterBounds(generalParams['studyArea']).select(generalParams['classBands'])
 
-    changeDetectionParams['lambda'] = params['lambda'] or 20/10000
-    changeDetectionParams['minNumOfYearsScaler'] = params['minNumOfYearsScaler'] or 1.33
+    changeDetectionParams['lambda'] = params['lambda'] if 'lambda' in params else 20/10000
+    changeDetectionParams['minNumOfYearsScaler'] = params['minNumOfYearsScaler'] if 'minNumOfYearsScaler' in params else 1.33
     changeDetectionParams['dateFormat'] = 1
-    changeDetectionParams['minObservations'] = params['minObservations'] or 3
-    changeDetectionParams['chiSquareProbability'] = params['chiSquareProbability'] or .9
+    changeDetectionParams['minObservations'] = params['minObservations'] if 'minObservations' in params else 3
+    changeDetectionParams['chiSquareProbability'] = params['chiSquareProbability'] if 'chiSquareProbability' in params else .9
 
     # Classification Parameter
     classParams = {}
     classParams['imageToClassify'] = None
-    classParams['numberOfSegments'] = generalParams.segs.__len__()
-    classParams['bandNames'] =  generalParams.classBands
+    classParams['numberOfSegments'] = generalParams['segs'].__len__()
+    classParams['bandNames'] =  generalParams['classBands']
     classParams['ancillary'] = None
     classParams['ancillaryFeatures'] = None
     classParams['trainingData'] = None
     classParams['classifier'] = ee.Classifier.smileRandomForest(150)
-    classParams['studyArea'] = generalParams['studyArea']
+    classParams['studyArea'] = generalParams.get('studyArea')
     classParams['classProperty'] = 'landcover'
     classParams['coefs'] = ['INTP','SIN','COS','RMSE']
     classParams['trainProp'] = None
@@ -260,7 +260,7 @@ def func_hnn(params):
     output['Layers'] = {}
 
     if (params['forestMask']):
-            output.Layers['mask'] = params['forestMask'].eq(params['forestValue'])
+            output['Layers']['mask'] = params['forestMask'].eq(params['forestValue'])
 
 
     # Some random editing of parameters
@@ -278,16 +278,16 @@ def func_hnn(params):
     # ----------------- Run Analysis
 
     # Run CCDC/CODED
-    output.Layers['rawChangeOutput'] = ee.Algorithms.TemporalSegmentation.Ccdc(changeDetectionParams)
-    output.Layers['formattedChangeOutput'] = utils.CCDC.buildCcdImage(output.Layers.rawChangeOutput, generalParams.segs.__len__(), generalParams.classBands)
+    output['Layers']['rawChangeOutput'] = ee.Algorithms.TemporalSegmentation.Ccdc(**changeDetectionParams)
+    output['Layers']['formattedChangeOutput'] = utils.CCDC.buildCcdImage(output['Layers']['rawChangeOutput'], len(generalParams['segs']), generalParams['classBands'])
     # prepTraining = True
     if (params['prepTraining']):
 
             # Get training data coefficients
 
             def func_wqm(feat):
-                    coefsForTraining = utils.CCDC.getMultiCoefs(output.Layers.formattedChangeOutput, ee.Image.constant(feat.getNumber('year')), 
-                    generalParams.classBands, generalParams.coefs, True, generalParams.segs, 'before')
+                    coefsForTraining = utils.CCDC.getMultiCoefs(output['Layers']['formattedChangeOutput'], ee.Image.constant(feat.getNumber('year')), 
+                    generalParams['classBands'], generalParams['coefs'], True, generalParams['segs'], 'before')
 
                     sampleForTraining = feat.setMulti(coefsForTraining.reduceRegion(
                             geometry=feat.geometry(),
@@ -311,7 +311,7 @@ def func_hnn(params):
             )).filter(ee.Filter.notNull(['NDFI_INTP']))
 
             # print('Sample for training: ', sampleForTraining.first().getInfo())
-            if (params['outId']):
+            if ('outId' in params):
                 outId = params['outId']
             else:
                 outId = 'sample_with_pred'
@@ -325,102 +325,100 @@ def func_hnn(params):
     else:
             sampleForTraining = params['training']
     # print(sampleForTraining.getInfo())
-
     # Format classification parameters and extract values  
-    classParams['imageToClassify'] = output.Layers['formattedChangeOutput']
+    classParams['imageToClassify'] = output['Layers']['formattedChangeOutput']
     classParams['trainingData'] = sampleForTraining
     def func_keyMap(key): return classParams[key]
-    vals = classParams.keys().map(func_keyMap)
-
+    vals = list(map((lambda x: func_keyMap(x)), list(classParams.keys())))
     # Run classification
-    output.Layers['classificationRaw'] = utils.Classification.classifySegments.apply(None, vals)
+    output['Layers']['classificationRaw'] = utils.Classification.classifySegments(*vals)#.apply(None, vals)
 
-    if (not output.Layers.mask):
-        output.Layers.mask = output.Layers['classificationRaw'].select(0).eq(generalParams.forestValue)
+    if ('mask' not in output['Layers']):
+        output['Layers']['mask'] = output['Layers']['classificationRaw'].select(0).eq(generalParams.get('forestValue'))
 
 
     # Keep only negative NDFI breaks
-    tMags = output.Layers['formattedChangeOutput'].select('.*NDFI_MAG').lt(0) \
-    .select(ee.List.sequence(0, generalParams.segs.__len__() - 2)) 
+    tMags = output['Layers']['formattedChangeOutput'].select('.*NDFI_MAG').lt(0) \
+    .select(ee.List.sequence(0, generalParams['segs'].__len__() - 2)) 
 
     factor = ee.Image(1).addBands(tMags)
-    output.Layers['classificationRaw'] = output.Layers['classificationRaw'].multiply(factor).selfMask()
+    output['Layers']['classificationRaw'] = output['Layers']['classificationRaw'].multiply(factor).selfMask()
 
-    output.Layers['classification'] = output.Layers['classificationRaw'] \
-    .select(ee.List.sequence(1, generalParams.segs.__len__() - 1)) \
+    output['Layers']['classification'] = output['Layers']['classificationRaw'] \
+    .select(ee.List.sequence(1, generalParams['segs'].__len__() - 1)) \
     .int8()
 
-    output.Layers['classification'] = output.Layers['classification'].updateMask(output.Layers.mask)
-    output.Layers['magnitude'] = output.Layers['formattedChangeOutput'].select('.*NDFI_MAG')
+    output['Layers']['classification'] = output['Layers']['classification'].updateMask(output['Layers']['mask'])
+    output['Layers']['magnitude'] = output['Layers']['formattedChangeOutput'].select('.*NDFI_MAG')
 
     # ----------------- Post-process
 
 
-    tBreaks = output.Layers['formattedChangeOutput'].select('.*tBreak').select(ee.List.sequence(0, generalParams.segs.__len__() - 2))
+    tBreaks = output['Layers']['formattedChangeOutput'].select('.*tBreak').select(ee.List.sequence(0, generalParams['segs'].__len__() - 2))
     tBreaksInterval = tBreaks.floor().gte(generalParams['startYear']).And(tBreaks.floor().lte(generalParams['endYear']))
-    output.Layers['classificationStudyPeriod'] =  output.Layers['classification'].updateMask(tBreaksInterval)
+    output['Layers']['classificationStudyPeriod'] =  output['Layers']['classification'].updateMask(tBreaksInterval)
 
-    deg = output.Layers['classificationStudyPeriod'].eq(generalParams['forestValue']).reduce(ee.Reducer.max()).rename('Degradation')
-    vDef = output.Layers['classificationStudyPeriod'].neq(generalParams['forestValue']).reduce(ee.Reducer.max()).rename('Deforestation')
+    deg = output['Layers']['classificationStudyPeriod'].eq(generalParams['forestValue']).reduce(ee.Reducer.max()).rename('Degradation')
+    vDef = output['Layers']['classificationStudyPeriod'].neq(generalParams['forestValue']).reduce(ee.Reducer.max()).rename('Deforestation')
     both = deg.And(vDef)
 
-    output.Layers['Degradation'] = deg.And(both.Not()).selfMask().int8()
-    output.Layers['Deforestation'] = vDef.And(both.Not()).selfMask().int8()
-    output.Layers['Both'] = both.selfMask().int8()
+    output['Layers']['Degradation'] = deg.And(both.Not()).selfMask().int8()
+    output['Layers']['Deforestation'] = vDef.And(both.Not()).selfMask().int8()
+    output['Layers']['Both'] = both.selfMask().int8()
 
-    # dateOfDegradation = output.Layers['classificationStudyPeriod'].eq(generalParams['forestValue']).multiply(tBreaks).multiply(tBreaksInterval)
-    # dateOfDeforestation = output.Layers['classificationStudyPeriod'].neq(generalParams['forestValue']).multiply(tBreaks).multiply(tBreaksInterval)
-    dateOfDegradation = output.Layers['classificationStudyPeriod'] \
+    # dateOfDegradation = output['Layers']['classificationStudyPeriod'].eq(generalParams['forestValue']).multiply(tBreaks).multiply(tBreaksInterval)
+    # dateOfDeforestation = output['Layers']['classificationStudyPeriod'].neq(generalParams['forestValue']).multiply(tBreaks).multiply(tBreaksInterval)
+    dateOfDegradation = output['Layers']['classificationStudyPeriod'] \
     .eq(generalParams['forestValue']) \
     .multiply(tBreaks) \
     .multiply(tBreaksInterval)
 
-    dateOfDeforestation = output.Layers['classificationStudyPeriod'] \
+    dateOfDeforestation = output['Layers']['classificationStudyPeriod'] \
     .neq(generalParams['forestValue']) \
     .multiply(tBreaks) \
     .multiply(tBreaksInterval)
 
-    output.Layers['DatesOfDegradation'] = dateOfDegradation
-    output.Layers['DatesOfDeforestation'] = dateOfDeforestation
+    output['Layers']['DatesOfDegradation'] = dateOfDegradation
+    output['Layers']['DatesOfDeforestation'] = dateOfDeforestation
 
     # 4-25-2022 Seperate magnitude by degradation and deforestation
     degMagBands = []
     defMagBands = []
     magIndices = []
-    for i in range(1, generalParams.segs.__len__(), 1):
-            degMagBands.push('DegradationMagnitude_' + i)
-            defMagBands.push('DeforestationMagnitude_' + i)
-            magIndices.push(i-1)
+    for i in range(1, generalParams['segs'].__len__(), 1):
+            degMagBands.append('DegradationMagnitude_' + str(i))
+            defMagBands.append('DeforestationMagnitude_' + str(i))
+            magIndices.append(i-1)
 
-    degIndices = output.Layers['classificationStudyPeriod'] \
+    degIndices = output['Layers']['classificationStudyPeriod'] \
     .eq(generalParams['forestValue'])
 
-    defIndices = output.Layers['classificationStudyPeriod'] \
+    defIndices = output['Layers']['classificationStudyPeriod'] \
     .neq(generalParams['forestValue'])
 
-    magOfDegradation = output.Layers['magnitude'].select(magIndices) \
+    magOfDegradation = output['Layers']['magnitude'].select(magIndices) \
     .multiply(degIndices) \
     .rename(degMagBands)
 
-    magOfDeforestation = output.Layers['magnitude'].select(magIndices) \
+    magOfDeforestation = output['Layers']['magnitude'].select(magIndices) \
     .multiply(defIndices) \
     .rename(defMagBands)
 
-    output.Layers['MagnitudeOfDegradation'] = magOfDegradation
-    output.Layers['MagnitudeOfDeforestation'] = magOfDeforestation
+    output['Layers']['MagnitudeOfDegradation'] = magOfDegradation
+    output['Layers']['MagnitudeOfDeforestation'] = magOfDeforestation
 
     # Make single layer stratification
-    stratification = output.Layers.mask.remap([0,1],[2,1]) \
-    .where(output.Layers['Degradation'], 3) \
-    .where(output.Layers['Deforestation'], 4) \
-    .where(output.Layers['Both'], 5)
+    stratification = output['Layers']['mask'].remap([0,1],[2,1]) \
+    .where(output['Layers']['Degradation'], 3) \
+    .where(output['Layers']['Deforestation'], 4) \
+    .where(output['Layers']['Both'], 5)
 
-    output.Layers['Stratification'] = stratification.rename('stratification').int8()
+    output['Layers']['Stratification'] = stratification.rename('stratification').int8()
 
     # Turn no data to non-forest
-    stratificationNoData = output.Layers['Stratification'].mask().eq(0)
-    stratificationGeo = output.Layers['Stratification'].geometry()
-    output.Layers['Stratification'] = output.Layers['Stratification'].unmask().where(stratificationNoData, 2).clip(stratificationGeo)
+    stratificationNoData = output['Layers']['Stratification'].mask().eq(0)
+    stratificationGeo = output['Layers']['Stratification'].geometry()
+    output['Layers']['Stratification'] = output['Layers']['Stratification'].unmask().where(stratificationNoData, 2).clip(stratificationGeo)
 
     # Mask with forest mask
     return output
@@ -520,12 +518,12 @@ def parameterization(training, testing, collection, chi2s, consecs, prepTraining
 
             outGeo = training.first().geometry()
             outFeat = ee.Feature(outGeo).setMulti(outParams)
-            listOfFeats.push(outFeat)
+            listOfFeats.append(outFeat)
             if (exportEach):
                 geemap.ee_export_vector_to_asset(
                 collection=ee.FeatureCollection([outFeat,outFeat]),
                 description='parameter_testing_point',
-                assetId='amazon/results_2021/parameters_' + chi_index + '_' + consec_index
+                assetId='amazon/results_2021/parameters_' + str(chi_index) + '_' + str(consec_index)
                 )
 
     return ee.FeatureCollection(listOfFeats)
@@ -611,12 +609,12 @@ def func_zse(geo, start, end, layer):
     + currentdate.strftime('%H') + "_"
     + currentdate.strftime('%M') + "_"
     + currentdate.strftime('%S')
-    deg = ee.Image(testOutput.Layers['Degradation'])
-    _def = ee.Image(testOutput.Layers['Deforestation'])
-    both = ee.Image(testOutput.Layers['Both'])
+    deg = ee.Image(testoutput['Layers']['Degradation'])
+    _def = ee.Image(testoutput['Layers']['Deforestation'])
+    both = ee.Image(testoutput['Layers']['Both'])
 
     geemap.ee_export_image_to_asset(
-        image=ee.Image(testOutput.Layers[layer]),
+        image=ee.Image(testoutput['Layers'][layer]),
         scale=30,
         description='im',
         region='geometry3',
@@ -671,18 +669,18 @@ def func_ard(results, folder, geo, size, asset, prefix, min, max,startPrefix):
     def func_ncr(obj):
         for i in range(0, obj, 1):
             i_adj = i + startPrefix
-            outName = folder + '/' + prefix + '_' + i_adj
+            outName = str(folder) + '/' + str(prefix) + '_' + str(i_adj)
 
             outGeo = ee.Feature(exportList.get(i)).geometry()
             if (i >= min and i <= max and folderAssets.indexOf(outName)):
-                m.addLayer(outGeo, {}, 'task_' + i)
+                m.addLayer(outGeo, {}, 'task_' + str(i))
                 geemap.ee_export_image_to_asset(
                     image=results,
                     scale=30,
                     pyramidingPolicy={
                         '.default':'mean'
                     },
-                    description='task_' + i_adj,
+                    description='task_' + str(i_adj),
                     assetId=outName,
                     region=outGeo,
                     maxPixels=1e13
@@ -717,7 +715,7 @@ def prepOutput(results, layers, numChanges, dateInt, maskProb,yearSubtract, flip
     changeIndices = []
     outLayers = []
     for i in range(0,numChanges):
-        changeIndices.push(i)
+        changeIndices.append(i)
 
     degradation = results.Layers.DatesOfDegradation.rename(['degradation_1','degradation_2','degradation_3','degradation_4']).select(changeIndices)
     deforestation = results.Layers.DatesOfDeforestation.rename(['deforestation_1','deforestation_2','deforestation_3','deforestation_4']).select(changeIndices)
@@ -754,41 +752,41 @@ def prepOutput(results, layers, numChanges, dateInt, maskProb,yearSubtract, flip
     classificationStudyPeriod = results.Layers.classificationStudyPeriod
     raw = results.Layers.rawChangeOutput
 
-    if (layers.degradation):
-        outLayers.push(degradation)
+    if ('degradation' in layers):
+        outLayers.append(degradation)
 
-    if (layers.deforestation):
-        outLayers.push(deforestation)
+    if ('deforestation' in layers):
+        outLayers.append(deforestation)
 
-    if (layers.forestMask):
-        outLayers.push(forestMask)
+    if ('forestMask' in layers):
+        outLayers.append(forestMask)
 
-    if (layers.magnitude):
-        outLayers.push(magnitude)
+    if ('magnitude' in layers):
+        outLayers.append(magnitude)
 
-    if (layers.magnitudeDegradation):
-        outLayers.push(magDegradation)
+    if ('magnitudeDegradation' in layers):
+        outLayers.append(magDegradation)
 
-    if (layers.magnitudeDeforestation):
-        outLayers.push(magDeforestation)
+    if ('magnitudeDeforestation' in layers):
+        outLayers.append(magDeforestation)
 
-    if (layers.probability):
-        outLayers.push(probability)
+    if ('probability' in layers):
+        outLayers.append(probability)
 
-    if (layers.rawOutput):
-        outLayers.push(raw)
+    if ('rawOutput' in layers):
+        outLayers.append(raw)
 
-    if (layers.stratification):
-        outLayers.push(stratification)
+    if ('stratification' in layers):
+        outLayers.append(stratification)
 
-    if (layers.classification):
-        outLayers.push(classification)
+    if ('classification' in layers):
+        outLayers.append(classification)
 
-    if (layers.classificationRaw):
-        outLayers.push(classificationRaw)
+    if ('classificationRaw' in layers):
+        outLayers.append(classificationRaw)
 
-    if (layers.classificationStudyPeriod):
-        outLayers.push(classificationStudyPeriod)
+    if ('classificationStudyPeriod' in layers):
+        outLayers.append(classificationStudyPeriod)
 
 
     return ee.Image.cat(outLayers).selfMask()
@@ -797,10 +795,10 @@ def prepOutput(results, layers, numChanges, dateInt, maskProb,yearSubtract, flip
 
 
 #-------------------- Sentinel 1
-composite = require("users/google/toolkits:landcover/impl/composites.js").Composites
-slope_lib = require('users/andreasvollrath/radar:slope_correction_lib.js')
-s1Lib = require('users/andreasvollrath/radar:s1Lib.js')
-sarLib = require('users/andreasvollrath/radar:sarLib.js')
+from . import composites_geemap as composite#.Composites
+from . import slope_correction_lib_geemap as slope_lib
+#s1Lib = require('users/andreasvollrath/radar:s1Lib.js')
+from . import sarLib_geemap as sarLib
 
 
 
@@ -958,33 +956,33 @@ def func_ixl(aoi, startDate, endDate, startDOY, endDOY, cloudFilter, cloudProbTh
 
 
     def func_gho(img):
-            # Add cloud component bands.
-            img_cloud = addCloudBands(img, cloudProbThresh)
+        # Add cloud component bands.
+        img_cloud = addCloudBands(img, cloudProbThresh)
 
-            # Add cloud shadow component bands.
-            img_cloud_shadow = addShadowBands(img_cloud, NirDarkThresh, cloudPrjDist)
+        # Add cloud shadow component bands.
+        img_cloud_shadow = addShadowBands(img_cloud, NirDarkThresh, cloudPrjDist)
 
-            # Combine cloud and shadow mask, set cloud and shadow as value 1, else 0.
-            is_cld_shdw = img_cloud_shadow.select('clouds').add(img_cloud_shadow.select('shadows')).gt(0)
+        # Combine cloud and shadow mask, set cloud and shadow as value 1, else 0.
+        is_cld_shdw = img_cloud_shadow.select('clouds').add(img_cloud_shadow.select('shadows')).gt(0)
 
-            # Remove small cloud-shadow patches and dilate remaining pixels by BUFFER input.
-            # 20 m scale is for speed, and assumes clouds don't require 10 m precision.
-            is_cld_shdw2 = (is_cld_shdw.focal_min(2).focal_max(buffer*2/20) \
-            .reproject(**{'crs': img.select([0]).projection(), 'scale': 20}) \
-            .rename('cloudmask'))
+        # Remove small cloud-shadow patches and dilate remaining pixels by BUFFER input.
+        # 20 m scale is for speed, and assumes clouds don't require 10 m precision.
+        is_cld_shdw2 = (is_cld_shdw.focal_min(2).focal_max(buffer*2/20) \
+        .reproject(**{'crs': img.select([0]).projection(), 'scale': 20}) \
+        .rename('cloudmask'))
 
-            # Add the final cloud-shadow mask to the image.
-            img_with_masks = img_cloud_shadow.addBands(is_cld_shdw2)
+        # Add the final cloud-shadow mask to the image.
+        img_with_masks = img_cloud_shadow.addBands(is_cld_shdw2)
 
-            mask = img_with_masks.select(['cloudmask']).eq(0)
+        mask = img_with_masks.select(['cloudmask']).eq(0)
 
-            img_to_return = ee.Image(img_with_masks.updateMask(mask) \
-            .select('B2', 'B3', 'B4','B8','B11','B12') \
-            .rename(['BLUE','GREEN','RED','NIR','SWIR1','SWIR2']) \
-            .divide(10000) \
-            .copyProperties(img))
+        img_to_return = ee.Image(img_with_masks.updateMask(mask) \
+        .select('B2', 'B3', 'B4','B8','B11','B12') \
+        .rename(['BLUE','GREEN','RED','NIR','SWIR1','SWIR2']) \
+        .divide(10000) \
+        .copyProperties(img))
 
-            return img_to_return.set('system:time_start', ee.Image(img_to_return.get('s2cloudless')).get('system:time_start'))
+        return img_to_return.set('system:time_start', ee.Image(img_to_return.get('s2cloudless')).get('system:time_start'))
 
     s2_with_cloud_bands = s2_joined_col.map(func_gho)
 
@@ -1034,3 +1032,7 @@ postProcess = {
   'prepOutput': prepOutput,
   'functions': ['exportGrids','prepOutput']
 }
+
+Preprocess = prep
+ChangeDetection = change
+Postprocess = postProcess

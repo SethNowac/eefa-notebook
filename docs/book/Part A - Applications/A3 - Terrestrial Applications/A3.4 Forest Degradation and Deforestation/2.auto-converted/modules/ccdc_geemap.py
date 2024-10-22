@@ -42,7 +42,7 @@ def buildMagnitude(fit, nSegments, bandList):
 
     retrieveMags = func_iwa
 
-    return ee.Image(bandList.map(retrieveMags))
+    return ee.Image(list(map((lambda x: retrieveMags(x)), bandList)))
 
 
 
@@ -69,7 +69,7 @@ def buildRMSE(fit, nSegments, bandList):
 
     retrieveMags = func_owi
 
-    return ee.Image(bandList.map(retrieveMags))
+    return ee.Image(list(map((lambda x: retrieveMags(x)), bandList)))
 
 
 
@@ -78,12 +78,12 @@ def buildRMSE(fit, nSegments, bandList):
 
 
 def buildCoefs(fit, nSegments, bandList):
-    nBands = bandList.length
+    nBands = len(bandList)
     segmentTag = buildSegmentTag(nSegments)
     bandTag = buildBandTag('coef', bandList)
     harmonicTag = ['INTP','SLP','COS','SIN','COS2','SIN2','COS3','SIN3']
 
-    zeros = ee.Image(ee.Array([ee.List.repeat(0, harmonicTag.length)])).arrayRepeat(0, nSegments)
+    zeros = ee.Image(ee.Array([ee.List.repeat(0, len(harmonicTag))])).arrayRepeat(0, nSegments)
 
     def func_xsb(band):
         coefImg = fit.select(band + '_coefs').arrayCat(zeros, 0).float().arraySlice(0, 0, nSegments)
@@ -98,7 +98,7 @@ def buildCoefs(fit, nSegments, bandList):
 
     retrieveCoefs = func_xsb
 
-    return ee.Image(bandList.map(retrieveCoefs))
+    return ee.Image(list(map((lambda x: retrieveCoefs(x)), bandList)))
 
 
 
@@ -167,9 +167,7 @@ def getMultiSynthetic(image, date, dateFormat, bandList, segs):
 
     retrieveSynthetic = func_old
 
-
-
-    return ee.Image.cat(bandList.map(retrieveSynthetic))
+    return ee.Image.cat(list(map((lambda x: retrieveSynthetic(x)), bandList)))
 
 
 
@@ -266,8 +264,7 @@ def getCoef(ccdResults, date, bandList, coef, segNames, behavior):
     inner = func_glz
 
 
-
-    coefs = ee.Image(bandList.map(inner)) 
+    coefs = ee.Image(list(map((lambda x: inner(x)), bandList)))
     return coefs
 
 
@@ -276,7 +273,7 @@ def applyNorm(bandCoefs, segStart, segEnd):
     intercepts = bandCoefs.select(".*INTP")
     slopes = bandCoefs.select(".*SLP")
     normalized = normalizeIntercept(intercepts, segStart, segEnd, slopes)
-    return bandCoefs.addBands({'srcImg':normalized, 'overwrite':True})
+    return bandCoefs.addBands(srcImg = normalized, overwrite = True)
 
 
 def getMultiCoefs(ccdResults, date, bandList, coef_list, cond, segNames, behavior):
@@ -290,8 +287,7 @@ def getMultiCoefs(ccdResults, date, bandList, coef_list, cond, segNames, behavio
 
 
 
-
-    coefs = ee.Image(coef_list.map(inner))
+    coefs = ee.Image(list(map((lambda x: inner(x)), coef_list)))
 
     # Normalized
     segStart = filterCoefs(ccdResults, date, "","tStart", segNames, behavior)
